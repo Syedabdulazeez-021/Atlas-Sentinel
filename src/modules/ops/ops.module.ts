@@ -79,10 +79,13 @@ export class OpsTools {
   @Tool({
     name: 'threat_sweep',
     description:
-      'THE flagship tool: sweep ALL hazard channels (real USGS earthquakes, 3-day severe weather at every asset, NOAA geomagnetic storms) ' +
-      'against every monitored asset, and return a single ranked threat brief. ' +
-      'Use whenever the user asks "what threatens my operations/assets/factories right now", asks for a risk overview, or requests a morning brief. ' +
-      'For news-based disruption signals, additionally call news_shocks with a focused query.',
+      'THE flagship tool: sweep ALL physical hazard channels (real USGS earthquakes, 3-day severe weather at every asset, NOAA geomagnetic ' +
+      'storms) against every monitored asset, and return a single ranked threat brief. ' +
+      'WHEN TO USE: call this FIRST for any morning briefing, "current threats", "what threatens my operations/assets/factories right now", ' +
+      'operations status, risk overview, or supply-chain risk question. ' +
+      'NEXT STEP: ALWAYS follow with news_shocks (focused query built from the monitored asset regions, e.g. "Taiwan port strike") — ' +
+      'the sweep does NOT include news signals, so a briefing is incomplete without that second call. ' +
+      'WHEN NOT TO USE: exposure to one specific earthquake (check_asset_exposure); weather at one named site (forecast_at).',
     inputSchema: z.object({}),
   })
   async threatSweep(_input: unknown, ctx: ExecutionContext) {
@@ -110,10 +113,14 @@ export class OpsTools {
     name: 'generate_sitrep',
     description:
       'Generate a formal structured situation report for one earthquake event: event facts, per-asset exposure, and recommended actions. ' +
-      'Use after check_asset_exposure/replay_event when the user wants a report, sitrep, or something to circulate to management. ' +
-      'The returned JSON is the data — present it as a clean formatted report.',
+      'WHEN TO USE: after latest_events, check_asset_exposure, or replay_event — pass the event id those tools returned ' +
+      '(events[].id or event.id) — whenever the user wants a sitrep, report, or something to circulate to management. ' +
+      'Works for both recent and historical event ids; historical ones are clearly marked SIMULATION. ' +
+      'The returned JSON is the data — present it as a clean formatted report. ' +
+      'WHEN NOT TO USE: without an event id (call latest_events or replay_event first to get one); ' +
+      'multi-channel briefings (threat_sweep); weather or news reports (forecast_at / news_shocks).',
     inputSchema: z.object({
-      event_id: z.string().describe('USGS event id (from latest_events or replay_event)'),
+      event_id: z.string().describe('USGS event id exactly as returned by latest_events (events[].id), check_asset_exposure, or replay_event (event.id)'),
     }),
   })
   async generateSitrep(input: { event_id: string }, ctx: ExecutionContext) {
@@ -196,9 +203,12 @@ export class OpsPrompts {
     return [{
       role: 'user' as const,
       content:
-        'Act as our risk operations officer. Run the threat_sweep tool now. Then, using its output, write a concise executive morning brief: ' +
+        'Act as our risk operations officer. Run the threat_sweep tool now, then call news_shocks with a focused query built from the ' +
+        'monitored asset regions (e.g. "Taiwan port strike" or "Japan logistics disruption") to add news signals. ' +
+        'Then, using both outputs, write a concise executive morning brief: ' +
         '(1) overall risk level in one line, (2) top 3 threats ranked with one-sentence explanations, (3) one concrete recommended action per threat, ' +
-        '(4) anything that needs escalation today. Professional, calm tone. If a channel returned an error, note it transparently.',
+        '(4) notable news signals (clearly marked unverified), (5) anything that needs escalation today. ' +
+        'Professional, calm tone. If a channel returned an error, note it transparently.',
     }];
   }
 

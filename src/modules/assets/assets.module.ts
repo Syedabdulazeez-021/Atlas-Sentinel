@@ -6,8 +6,9 @@ export class AssetTools {
     name: 'register_asset',
     description:
       'Register a physical asset (factory, warehouse, supplier, office, datacenter, port) that Atlas should monitor for threats. ' +
-      'Use whenever the user mentions a facility, plant, supplier or site they care about. ' +
-      'Requires a name and coordinates; if the user gives only a city, estimate its lat/lon yourself and pass them in.',
+      'WHEN TO USE: the user asks to add/register/monitor a facility, plant, supplier or site — e.g. "register our textile supplier in Gaziantep at 37.07, 37.38". ' +
+      'Requires a name and coordinates; if the user gives only a city, estimate its lat/lon yourself and pass them in. ' +
+      'WHEN NOT TO USE: querying existing assets (list_assets) or removing one (remove_asset). Registering an existing name replaces it.',
     inputSchema: z.object({
       name: z.string().describe('Human-friendly asset name, e.g. "Hsinchu Chip Supplier"'),
       lat: z.number().min(-90).max(90).describe('Latitude in decimal degrees'),
@@ -32,7 +33,10 @@ export class AssetTools {
     name: 'list_assets',
     description:
       'List every asset currently monitored by Atlas, with coordinates and type. ' +
-      'Use to answer "what am I monitoring?" or before threat assessments when the user refers to "my assets/factories/suppliers".',
+      'WHEN TO USE: the user asks "what am I monitoring?", or you need an asset name that the user did not provide or gave ambiguously. ' +
+      'WHEN NOT TO USE: do NOT call this before forecast_at or check_asset_exposure when the user already supplied an exact asset name — ' +
+      'those tools take the name directly (case-insensitive) and return known_assets themselves if it does not match. ' +
+      'Also not needed before threat_sweep, which already covers every monitored asset.',
     inputSchema: z.object({}),
   })
   async listAssets(_input: unknown, ctx: ExecutionContext) {

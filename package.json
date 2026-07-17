@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "nitrostack-cli dev",
     "build": "nitrostack-cli build",
+    "test": "node --import tsx --test --test-force-exit tests/logic.test.ts",
     "start": "npm run build && nitrostack-cli start",
     "start:prod": "nitrostack-cli start",
     "upgrade": "nitrostack-cli upgrade",

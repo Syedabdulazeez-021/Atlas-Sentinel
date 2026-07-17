@@ -29,10 +29,15 @@ const assets = new Map<string, Asset>();
 let lastSweep: unknown = null;
 let lastSweepAt: string | null = null;
 
+/** Canonical lookup key: case-insensitive and whitespace-tolerant. */
+function keyFor(name: string): string {
+  return name.trim().toLowerCase();
+}
+
 function load(file: string) {
   try {
     const arr: Asset[] = JSON.parse(fs.readFileSync(file, 'utf-8'));
-    for (const a of arr) assets.set(a.name.toLowerCase(), a);
+    for (const a of arr) assets.set(keyFor(a.name), a);
   } catch {
     /* file absent is fine */
   }
@@ -51,17 +56,17 @@ function persist() {
 
 export const store = {
   addAsset(a: Asset): Asset {
-    assets.set(a.name.toLowerCase(), a);
+    assets.set(keyFor(a.name), a);
     persist();
     return a;
   },
   removeAsset(name: string): boolean {
-    const ok = assets.delete(name.toLowerCase());
+    const ok = assets.delete(keyFor(name));
     if (ok) persist();
     return ok;
   },
   getAsset(name: string): Asset | undefined {
-    return assets.get(name.toLowerCase());
+    return assets.get(keyFor(name));
   },
   listAssets(): Asset[] {
     return [...assets.values()];
