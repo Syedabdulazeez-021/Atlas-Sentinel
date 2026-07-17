@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+out/
+.next/
+
+# Tooling
+.nitrostudio/
+
+# Generated
+next-env.d.ts
+
+# Environment
+.env
+.env.local
