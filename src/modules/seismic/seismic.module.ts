@@ -33,6 +33,12 @@ export async function fetchQuakes(minMag: number, hoursBack: number): Promise<Qu
   return parseUsgs(await fetchJson(url, { ttlMs: 120_000 }));
 }
 
+/** Direct USGS lookup by event id — works for any event, recent or historical. */
+export async function fetchQuakeById(eventId: string): Promise<Quake | undefined> {
+  const url = `https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&eventid=${encodeURIComponent(eventId)}`;
+  return parseUsgs(await fetchJson(url, { ttlMs: 3600_000 }))[0];
+}
+
 export function exposureFor(q: Quake) {
   return store.listAssets().map((a) => {
     const distance_km = Math.round(haversineKm({ lat: q.lat, lon: q.lon }, a));
@@ -44,9 +50,12 @@ export class SeismicTools {
   @Tool({
     name: 'latest_events',
     description:
-      'Fetch real earthquakes from the USGS global feed. Use whenever the user asks about earthquakes, seismic activity, ' +
-      'or recent natural events. Returns events with magnitude, location, coordinates and how many hours ago each struck. ' +
-      'Follow up with check_asset_exposure to see which monitored assets are affected.',
+      'Fetch real recent earthquakes from the USGS global feed, with magnitude, location, coordinates, hours ago, and a unique ' +
+      'event id per quake. WHEN TO USE: any question like "Any significant earthquakes in the last day?", "any earthquakes?", ' +
+      '"recent seismic activity?" — this is always the FIRST tool of the earthquake workflow. ' +
+      'If the user also asks "are any of my monitored assets at risk?" or "are my factories affected?", follow up with ' +
+      'check_asset_exposure using an id from events[].id. ' +
+      'WHEN NOT TO USE: historical/famous earthquakes (replay_event); a full multi-channel risk overview (threat_sweep).',
     inputSchema: z.object({
       min_magnitude: z.number().default(4.5).describe('Minimum magnitude (4.5 = significant; lower to 4.0 if few results)'),
       hours_back: z.number().default(24).describe('Look-back window in hours (24-72 typical)'),
@@ -55,8 +64,13 @@ export class SeismicTools {
   async latestEvents(input: { min_magnitude: number; hours_back: number }, ctx: ExecutionContext) {
     try {
       ctx.logger.info('Fetching USGS events', input);
-      const quakes = await fetchQuakes(input.min_magnitude ?? 4.5, input.hours_back ?? 24);
+      const minMag = input.min_magnitude ?? 4.5;
+      const hours = input.hours_back ?? 24;
+      const quakes = await fetchQuakes(minMag, hours);
       return {
+        summary: quakes.length
+          ? `Found ${quakes.length} earthquake(s) M${minMag}+ in the last ${hours}h from the USGS feed — largest: M${quakes[0].mag} ${quakes[0].place}.`
+          : `No earthquakes M${minMag}+ in the last ${hours}h — a quiet period.`,
         mode: isMock() ? 'SIMULATION (mock data)' : 'LIVE — real USGS data',
         count: quakes.length,
         events: quakes,
@@ -79,23 +93,29 @@ export class SeismicTools {
       hours_back: z.number().default(96).describe('Look-back used to re-locate the event'),
     }),
   })
-  async checkExposure(input: { event_id: string; min_magnitude: number; hours_back: number }, ctx: ExecutionContext) {
+  async checkExposure(input: { event_id: string; min_magnitude?: number; hours_back?: number }, ctx: ExecutionContext) {
     try {
       const quakes = await fetchQuakes(input.min_magnitude ?? 4.0, input.hours_back ?? 96);
-      const q = quakes.find((x) => x.id === input.event_id);
+      let q = quakes.find((x) => x.id === input.event_id);
+      if (!q) {
+        // Recent feed is magnitude-ordered and capped at 30 — fall back to direct by-id lookup.
+        try { q = await fetchQuakeById(input.event_id); } catch { /* fall through */ }
+      }
       if (!q) {
         return {
-          error: `Event '${input.event_id}' not found in the last ${input.hours_back ?? 96}h feed.`,
+          error: `Event '${input.event_id}' not found (recent feed or direct USGS lookup).`,
           known_event_ids: quakes.slice(0, 10).map((x) => x.id),
           hint: 'Call latest_events first and use one of its ids, or use replay_event for historical earthquakes.',
         };
       }
       const exposures = exposureFor(q);
+      const affected = exposures.filter((e) => e.severity !== 'none');
       ctx.logger.info('Exposure computed', { event: q.id, assets: exposures.length });
       return {
+        summary: `Exposure check for M${q.mag} earthquake ${q.place}: ${affected.length} of ${exposures.length} monitored assets potentially affected.`,
         event: q,
         exposures,
-        affected: exposures.filter((e) => e.severity !== 'none'),
+        affected,
         method: 'haversine distance vs magnitude rule table (see README for thresholds)',
       };
     } catch (e) {

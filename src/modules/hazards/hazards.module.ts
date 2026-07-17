@@ -27,12 +27,25 @@ export class HazardTools {
   @Tool({
     name: 'forecast_at',
     description:
-      'Get a 3-day severe-weather outlook for one monitored asset (heat, extreme rainfall/flood risk, damaging wind gusts). ' +
-      'Use when the user asks about weather risk to a site, storms, typhoons, heatwaves or flooding. Pass the exact asset name from list_assets.',
-    inputSchema: z.object({ asset_name: z.string().describe('Exact name of a registered asset') }),
+      'Get the weather over the next few days (3-day severe-weather outlook) for ONE monitored asset: storm risk, flood risk, ' +
+      'typhoon or damaging wind gusts, extreme rainfall, and heatwaves. ' +
+      'WHEN TO USE: any question about weather risk, storm risk, flood risk, typhoons, wind, rain or heat at a specific site — ' +
+      'e.g. "What is the storm and flood risk for my Osaka Distribution Warehouse over the next few days?". ' +
+      'Call this tool DIRECTLY with the asset name the user gave — do NOT call list_assets first. Matching is case-insensitive ' +
+      'and a unique partial name (e.g. "Osaka") also works; an unknown name returns known_assets so you can recover in one step. ' +
+      'WHEN NOT TO USE: weather across all assets at once (threat_sweep); earthquake exposure (check_asset_exposure).',
+    inputSchema: z.object({ asset_name: z.string().describe('Asset name as the user said it (case-insensitive; unique partial names accepted)') }),
   })
   async forecastAt(input: { asset_name: string }, ctx: ExecutionContext) {
-    const asset = store.getAsset(input.asset_name);
+    let asset = store.getAsset(input.asset_name) ?? store.getAsset(input.asset_name.trim());
+    if (!asset) {
+      // Unique case-insensitive substring match also counts — weak callers abbreviate names.
+      const needle = input.asset_name.trim().toLowerCase();
+      const cands = store.listAssets().filter(
+        (a) => a.name.toLowerCase().includes(needle) || needle.includes(a.name.toLowerCase())
+      );
+      if (cands.length === 1) asset = cands[0];
+    }
     if (!asset) {
       return { error: `Unknown asset '${input.asset_name}'.`, known_assets: store.assetNames() };
     }
@@ -41,8 +54,10 @@ export class HazardTools {
       const flags = weatherFlags(days);
       ctx.logger.info('Forecast fetched', { asset: asset.name, flags: flags.length });
       return {
+        summary: `3-day weather outlook for ${asset.name}: ` + (flags.length
+          ? `${flags.length} severe-weather flag(s) — ${flags.slice(0, 3).map((f) => `${f.reason} on ${f.date}`).join('; ')}.`
+          : 'no severe storm, flood, wind or heat risk flagged.'),
         asset: asset.name, forecast: days, flags,
-        summary: flags.length ? `${flags.length} weather flag(s) in the next 3 days` : 'No severe weather flagged',
         source: 'Open-Meteo',
       };
     } catch (e) {

@@ -99,10 +99,13 @@ export class OpsTools {
     description:
       'THE flagship tool: sweep all four hazard domains in parallel — real USGS earthquakes, 3-day severe weather per asset, ' +
       'NOAA geomagnetic storms, and GDELT news signals per asset region — and return scored raw SIGNALS. ' +
+      'WHEN TO USE: "give me a morning brief", "what threatens my operations right now", "risk overview across all hazard channels", ' +
+      '"current threats", operations or supply-chain risk questions — any request for an overall picture. ' +
       'It deliberately does NOT return a final verdict: YOU must correlate signals across channels ' +
       '(e.g. a quake near an asset PLUS a disruption headline from the same region is worse than either alone) and produce ' +
       'your own ranked judgment. The response is a compact summary; read resource atlas://threats/live for the complete ' +
-      'signal set before deep analysis. Use whenever the user asks what threatens their operations, wants a risk overview or a morning brief.',
+      'signal set before deep analysis. ' +
+      'WHEN NOT TO USE: one specific earthquake (check_asset_exposure); weather at one named site (forecast_at).',
     inputSchema: z.object({}),
   })
   async threatSweep(_input: unknown, ctx: ExecutionContext) {
@@ -121,6 +124,7 @@ export class OpsTools {
       try { store.setLastSweep(full); store.addAudit('threat_sweep', `${sweep.signals.length} signals`, 'ok'); } catch { /* storage never kills a sweep */ }
       ctx.logger.info('threat_sweep done', { signals: sweep.signals.length });
       return {
+        summary: `Threat sweep complete: ${sweep.signals.length} signal(s) across seismic, weather, space and news channels for ${full.assets_monitored.length} monitored asset(s).`,
         mode: full.mode,
         generated_at_utc: full.generated_at_utc,
         assets_monitored: full.assets_monitored,
@@ -147,9 +151,12 @@ export class OpsTools {
   @Tool({
     name: 'generate_sitrep',
     description:
-      'Generate a formal structured situation report for one earthquake event id (from latest_events or replay_event): ' +
-      'event facts, per-asset exposure, severity-matched recommended actions. Returns a summary; the full report is stored ' +
-      'at resource atlas://sitrep/latest. Use when the user wants a report or sitrep to circulate.',
+      'Generate a formal situation report for one earthquake event id (from latest_events or replay_event): ' +
+      'event facts, per-asset exposure, severity-matched recommended actions. ' +
+      'WHEN TO USE: "build me a formal situation report", "a sitrep I can send to management", "a report to circulate" — ' +
+      'any request for a formal, shareable earthquake report. Pass the event id the user gave or one returned by a prior tool. ' +
+      'Returns a summary; the full report is stored at resource atlas://sitrep/latest. ' +
+      'WHEN NOT TO USE: multi-channel overviews (threat_sweep); reports without an earthquake event id.',
     inputSchema: z.object({ event_id: z.string().describe('USGS event id, e.g. us6000jllz') }),
   })
   async generateSitrep(input: { event_id: string }, ctx: ExecutionContext) {
@@ -198,7 +205,11 @@ export class OpsTools {
         next_review: 'Re-run threat_sweep in 4 hours or upon aftershock M5.0+',
       };
       try { store.setLastSitrep(full); store.addAudit('generate_sitrep', q.id, 'ok'); } catch { /* never fatal */ }
-      return { ...full, asset_impact: affected.length ? affected : exposures.slice(0, 3),
+      return {
+        summary: `Formal situation report generated for M${q.mag} earthquake, ${q.place} (event ${q.id}): ` +
+          `${affected.length} of ${exposures.length} monitored asset(s) affected` +
+          (mode.includes('SIMULATION') ? '. This is a SIMULATION / historical replay, not a current event.' : '.'),
+        ...full, asset_impact: affected.length ? affected : exposures.slice(0, 3),
         full_data: 'Full report stored at resource atlas://sitrep/latest.' };
     } catch (e) {
       return errorPayload('sitrep generation', e);
