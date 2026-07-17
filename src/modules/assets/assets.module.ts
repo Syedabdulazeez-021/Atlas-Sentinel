@@ -1,0 +1,84 @@
+import { ToolDecorator as Tool, ResourceDecorator as Resource, ExecutionContext, z, Module } from '@nitrostack/core';
+import { store, Asset } from '../../lib/store.js';
+
+export class AssetTools {
+  @Tool({
+    name: 'register_asset',
+    description:
+      'Register a physical asset (factory, warehouse, supplier, office, datacenter, port) that Atlas should monitor for threats. ' +
+      'Use whenever the user mentions a facility, plant, supplier or site they care about. ' +
+      'Requires a name and coordinates; if the user gives only a city, estimate its lat/lon yourself and pass them in.',
+    inputSchema: z.object({
+      name: z.string().describe('Human-friendly asset name, e.g. "Hsinchu Chip Supplier"'),
+      lat: z.number().min(-90).max(90).describe('Latitude in decimal degrees'),
+      lon: z.number().min(-180).max(180).describe('Longitude in decimal degrees'),
+      type: z.enum(['office', 'warehouse', 'supplier', 'factory', 'datacenter', 'port']),
+      notes: z.string().optional().describe('Optional context, e.g. what it supplies'),
+    }),
+  })
+  async registerAsset(input: Asset, ctx: ExecutionContext) {
+    ctx.logger.info('Registering asset', { name: input.name });
+    const existed = !!store.getAsset(input.name);
+    const asset = store.addAsset(input);
+    return {
+      registered: asset,
+      replaced_existing: existed,
+      total_assets: store.listAssets().length,
+      message: `Asset '${asset.name}' is now under Atlas watch.`,
+    };
+  }
+
+  @Tool({
+    name: 'list_assets',
+    description:
+      'List every asset currently monitored by Atlas, with coordinates and type. ' +
+      'Use to answer "what am I monitoring?" or before threat assessments when the user refers to "my assets/factories/suppliers".',
+    inputSchema: z.object({}),
+  })
+  async listAssets(_input: unknown, ctx: ExecutionContext) {
+    const assets = store.listAssets();
+    ctx.logger.info('Listing assets', { count: assets.length });
+    return { count: assets.length, assets };
+  }
+
+  @Tool({
+    name: 'remove_asset',
+    description: 'Stop monitoring an asset by name. Use when the user asks to remove/deregister a site.',
+    inputSchema: z.object({ name: z.string().describe('Exact asset name to remove') }),
+  })
+  async removeAsset(input: { name: string }, ctx: ExecutionContext) {
+    const ok = store.removeAsset(input.name);
+    if (!ok) {
+      return {
+        error: `No asset named '${input.name}'.`,
+        known_assets: store.assetNames(),
+      };
+    }
+    ctx.logger.info('Removed asset', { name: input.name });
+    return { removed: input.name, remaining: store.assetNames() };
+  }
+}
+
+export class AssetResources {
+  @Resource({
+    uri: 'atlas://assets',
+    name: 'Monitored Assets',
+    description: 'Live registry of every physical asset Atlas is watching (name, coordinates, type).',
+    mimeType: 'application/json',
+  })
+  async assets(uri: string, ctx: ExecutionContext) {
+    ctx.logger.info('Serving atlas://assets');
+    return {
+      contents: [
+        { uri, mimeType: 'application/json', text: JSON.stringify({ assets: store.listAssets() }, null, 2) },
+      ],
+    };
+  }
+}
+
+@Module({
+  name: 'assets',
+  description: 'Asset registry: the facilities Atlas protects',
+  controllers: [AssetTools, AssetResources],
+})
+export class AssetsModule {}

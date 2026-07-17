@@ -1,0 +1,5 @@
+[
+  { "name": "Hsinchu Chip Supplier", "lat": 24.80, "lon": 120.99, "type": "supplier", "notes": "Tier-1 semiconductor supplier, Taiwan" },
+  { "name": "Osaka Distribution Warehouse", "lat": 34.69, "lon": 135.50, "type": "warehouse", "notes": "Primary Japan distribution hub" },
+  { "name": "Kochi Assembly Plant", "lat": 9.93, "lon": 76.26, "type": "factory", "notes": "Final assembly, Kerala, India" }
+]
