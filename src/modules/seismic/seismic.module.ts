@@ -70,6 +70,9 @@ export class SeismicTools {
         mode: isMock() ? 'SIMULATION (mock data)' : 'LIVE — real USGS data',
         count: quakes.length,
         events: quakes,
+        next_step: quakes.length
+          ? 'To see whether monitored assets are affected, call check_asset_exposure with event_id set to one of events[].id. For a formal report, then call generate_sitrep with the same id.'
+          : undefined,
         tip: quakes.length === 0 ? 'Quiet period. Lower min_magnitude to 4.0 or widen hours_back to 72.' : undefined,
       };
     } catch (e) {
@@ -110,12 +113,15 @@ export class SeismicTools {
         };
       }
       const exposures = exposureFor(q);
+      const affected = exposures.filter((e) => e.severity !== 'none');
       ctx.logger.info('Exposure computed', { event: q.id, assets: exposures.length });
       return {
+        event_id: q.id,
         event: q,
         exposures,
-        affected: exposures.filter((e) => e.severity !== 'none'),
+        affected,
         method: 'haversine distance vs magnitude rule table (see README for thresholds)',
+        next_step: 'If the user wants a report to circulate, call generate_sitrep with this event_id.',
       };
     } catch (e) {
       return errorPayload('exposure check', e);

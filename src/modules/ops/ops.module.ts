@@ -5,7 +5,7 @@ import {
 import { errorPayload, isMock } from '../../lib/http.js';
 import { weatherFlags, kpToStorm, worstSeverity, severityRank, Severity } from '../../lib/geo.js';
 import { store } from '../../lib/store.js';
-import { fetchQuakes, exposureFor, Quake } from '../seismic/seismic.module.js';
+import { fetchQuakes, fetchQuakeById, exposureFor, Quake } from '../seismic/seismic.module.js';
 import { forecastDays, currentKp } from '../hazards/hazards.module.js';
 
 interface Threat {
@@ -101,6 +101,8 @@ export class OpsTools {
         threats: sweep.threats,
         channels_checked: sweep.channels_checked,
         channel_errors: sweep.errors.length ? sweep.errors : undefined,
+        next_step:
+          'News signals are NOT included in this sweep. To complete the briefing, call news_shocks now with a focused query built from the monitored asset regions (e.g. "Taiwan port strike", "Japan logistics disruption").',
       };
       store.setLastSweep(result);
       return result;
@@ -128,23 +130,16 @@ export class OpsTools {
       let q: Quake | undefined = (await fetchQuakes(4.0, 96)).find((x) => x.id === input.event_id);
       let mode = 'LIVE';
       if (!q) {
-        // fall back to historical lookup => simulation
-        const { fetchJson } = await import('../../lib/http.js');
-        const url = `https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&eventid=${encodeURIComponent(input.event_id)}`;
-        const d: any = await fetchJson(url, { ttlMs: 3600_000 });
-        const f = d?.features?.[0];
-        if (f) {
-          q = {
-            id: f.id, mag: f.properties.mag, place: f.properties.place,
-            time_utc: new Date(f.properties.time).toISOString(),
-            hours_ago: Math.round((Date.now() - f.properties.time) / 3600_000),
-            lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0],
-            depth_km: f.geometry.coordinates[2], url: f.properties.url,
-          };
-          mode = '⚠️ SIMULATION — historical replay';
-        }
+        // fall back to direct historical lookup => simulation
+        try { q = await fetchQuakeById(input.event_id); } catch { /* fall through to error return */ }
+        if (q) mode = '⚠️ SIMULATION — historical replay';
       }
-      if (!q) return { error: `Event '${input.event_id}' not found (recent or historical).` };
+      if (!q) {
+        return {
+          error: `Event '${input.event_id}' not found (recent or historical).`,
+          hint: 'Get a valid id from latest_events (events[].id) or replay_event (event.id) first.',
+        };
+      }
 
       const exposures = exposureFor(q);
       const affected = exposures.filter((e) => e.severity !== 'none');
@@ -158,14 +153,40 @@ export class OpsTools {
       if (!affected.length) actions.push('No monitored assets exposed. Log event and continue monitoring.');
 
       ctx.logger.info('Sitrep generated', { event: q.id, affected: affected.length });
+      const generatedAt = new Date().toISOString();
+      const summary = `M${q.mag} earthquake, ${q.place}, ${q.hours_ago}h ago, depth ${q.depth_km} km`;
+      const nextReview = 'Re-run threat_sweep in 4 hours or upon aftershock M5.0+';
+      const markdown = [
+        `# ATLAS SENTINEL SITUATION REPORT`,
+        ``,
+        `**Mode:** ${mode}  `,
+        `**Generated:** ${generatedAt}  `,
+        `**Event:** ${q.id} — [USGS page](${q.url})`,
+        ``,
+        `## SITUATION`,
+        summary + '.',
+        ``,
+        `## ASSET IMPACT`,
+        `| Asset | Type | Distance (km) | Severity |`,
+        `|---|---|---:|---|`,
+        ...exposures.map((e) => `| ${e.asset} | ${e.type} | ${e.distance_km} | ${e.severity.toUpperCase()} |`),
+        ``,
+        `## RECOMMENDED ACTIONS`,
+        ...actions.map((a, i) => `${i + 1}. ${a}`),
+        ``,
+        `## NEXT REVIEW`,
+        nextReview,
+      ].join('\n');
       return {
         report_type: 'ATLAS SENTINEL SITUATION REPORT', mode,
-        generated_at_utc: new Date().toISOString(),
-        situation: { event: q, summary: `M${q.mag} earthquake, ${q.place}, ${q.hours_ago}h ago, depth ${q.depth_km} km` },
+        generated_at_utc: generatedAt,
+        situation: { event: q, summary },
         asset_impact: exposures,
         affected_count: affected.length,
         recommended_actions: actions,
-        next_review: 'Re-run threat_sweep in 4 hours or upon aftershock M5.0+',
+        next_review: nextReview,
+        markdown,
+        presentation_hint: 'Show the markdown field to the user as the formatted, circulateable report.',
       };
     } catch (e) {
       return errorPayload('sitrep generation', e);
