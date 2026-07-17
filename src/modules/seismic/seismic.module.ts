@@ -33,12 +33,6 @@ export async function fetchQuakes(minMag: number, hoursBack: number): Promise<Qu
   return parseUsgs(await fetchJson(url, { ttlMs: 120_000 }));
 }
 
-/** Direct USGS lookup by event id — works for any event, recent or historical. */
-export async function fetchQuakeById(eventId: string): Promise<Quake | undefined> {
-  const url = `https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&eventid=${encodeURIComponent(eventId)}`;
-  return parseUsgs(await fetchJson(url, { ttlMs: 3600_000 }))[0];
-}
-
 export function exposureFor(q: Quake) {
   return store.listAssets().map((a) => {
     const distance_km = Math.round(haversineKm({ lat: q.lat, lon: q.lon }, a));
@@ -50,13 +44,9 @@ export class SeismicTools {
   @Tool({
     name: 'latest_events',
     description:
-      'Step 1 of the earthquake workflow: fetch real recent earthquakes from the USGS global feed. Each event includes magnitude, ' +
-      'location, coordinates, hours ago, and a unique event id (events[].id). ' +
-      'WHEN TO USE: the user asks about earthquakes or seismic activity — e.g. "Any earthquakes?", "Any big quakes in the last 24 hours?". ' +
-      'NEXT STEP: if the user also asks "are my factories affected?" or "are my monitored assets at risk?", immediately call ' +
-      'check_asset_exposure with an id from events[].id — never judge exposure from this feed alone. Pass an id to generate_sitrep for a formal report. ' +
-      'WHEN NOT TO USE: historical/famous earthquakes (use replay_event); a full multi-channel risk overview or morning briefing (use threat_sweep); ' +
-      'weather or news (use forecast_at / news_shocks).',
+      'Fetch real earthquakes from the USGS global feed. Use whenever the user asks about earthquakes, seismic activity, ' +
+      'or recent natural events. Returns events with magnitude, location, coordinates and how many hours ago each struck. ' +
+      'Follow up with check_asset_exposure to see which monitored assets are affected.',
     inputSchema: z.object({
       min_magnitude: z.number().default(4.5).describe('Minimum magnitude (4.5 = significant; lower to 4.0 if few results)'),
       hours_back: z.number().default(24).describe('Look-back window in hours (24-72 typical)'),
@@ -70,9 +60,6 @@ export class SeismicTools {
         mode: isMock() ? 'SIMULATION (mock data)' : 'LIVE — real USGS data',
         count: quakes.length,
         events: quakes,
-        next_step: quakes.length
-          ? 'To see whether monitored assets are affected, call check_asset_exposure with event_id set to one of events[].id. For a formal report, then call generate_sitrep with the same id.'
-          : undefined,
         tip: quakes.length === 0 ? 'Quiet period. Lower min_magnitude to 4.0 or widen hours_back to 72.' : undefined,
       };
     } catch (e) {
@@ -83,45 +70,33 @@ export class SeismicTools {
   @Tool({
     name: 'check_asset_exposure',
     description:
-      'Step 2 of the earthquake workflow — THE core risk tool: given an earthquake event id, compute how exposed each monitored ' +
-      'asset is, using distance from the epicenter vs magnitude. Severity levels: severe / high / moderate / low / none. ' +
-      'Returns the event, per-asset exposures, and the affected subset. ' +
-      'WHEN TO USE: right after latest_events (or replay_event) whenever the user asks "Are my factories affected?", ' +
-      '"Are my monitored assets at risk?", "which sites are at risk?". Pass event_id exactly as returned in events[].id — any valid USGS id works, recent or historical. ' +
-      'NEXT STEP: if the user wants a report to circulate, call generate_sitrep with the same event_id. ' +
-      'WHEN NOT TO USE: without an event id (call latest_events first to get one); weather exposure (forecast_at); all-channel overview (threat_sweep).',
+      'THE core risk tool: given an earthquake event id (from latest_events or replay_event), compute how exposed each ' +
+      'monitored asset is, using distance from the epicenter and magnitude. Severity levels: severe / high / moderate / low / none. ' +
+      'Use whenever the user asks "are we affected", "which sites are at risk", or after any significant event is found.',
     inputSchema: z.object({
-      event_id: z.string().describe('USGS event id exactly as returned by latest_events or replay_event, e.g. "us6000jllz"'),
+      event_id: z.string().describe('USGS event id, e.g. "us6000jllz"'),
       min_magnitude: z.number().default(4.0).describe('Feed filter used to re-locate the event'),
       hours_back: z.number().default(96).describe('Look-back used to re-locate the event'),
     }),
   })
-  async checkExposure(input: { event_id: string; min_magnitude?: number; hours_back?: number }, ctx: ExecutionContext) {
+  async checkExposure(input: { event_id: string; min_magnitude: number; hours_back: number }, ctx: ExecutionContext) {
     try {
       const quakes = await fetchQuakes(input.min_magnitude ?? 4.0, input.hours_back ?? 96);
-      let q = quakes.find((x) => x.id === input.event_id);
-      if (!q) {
-        // The recent feed is magnitude-ordered and capped at 30, so a valid id can
-        // be missing from it — fall back to a direct USGS lookup by event id.
-        try { q = await fetchQuakeById(input.event_id); } catch { /* fall through to error payload */ }
-      }
+      const q = quakes.find((x) => x.id === input.event_id);
       if (!q) {
         return {
-          error: `Event '${input.event_id}' not found (recent feed or direct USGS lookup).`,
+          error: `Event '${input.event_id}' not found in the last ${input.hours_back ?? 96}h feed.`,
           known_event_ids: quakes.slice(0, 10).map((x) => x.id),
           hint: 'Call latest_events first and use one of its ids, or use replay_event for historical earthquakes.',
         };
       }
       const exposures = exposureFor(q);
-      const affected = exposures.filter((e) => e.severity !== 'none');
       ctx.logger.info('Exposure computed', { event: q.id, assets: exposures.length });
       return {
-        event_id: q.id,
         event: q,
         exposures,
-        affected,
+        affected: exposures.filter((e) => e.severity !== 'none'),
         method: 'haversine distance vs magnitude rule table (see README for thresholds)',
-        next_step: 'If the user wants a report to circulate, call generate_sitrep with this event_id.',
       };
     } catch (e) {
       return errorPayload('exposure check', e);
@@ -132,9 +107,7 @@ export class SeismicTools {
     name: 'find_critical_infra',
     description:
       'Find critical infrastructure (hospitals, fire stations) near a coordinate via OpenStreetMap. ' +
-      'WHEN TO USE: assessing an earthquake epicenter or asset location — e.g. enriching a generate_sitrep report with nearby emergency facilities. ' +
-      'Take lat/lon from the event returned by latest_events / check_asset_exposure / replay_event, or from a registered asset. ' +
-      'WHEN NOT TO USE: not a threat detector — it only lists facilities near a point.',
+      'Use when assessing an earthquake epicenter or asset location — e.g. for a situation report listing nearby emergency facilities.',
     inputSchema: z.object({
       lat: z.number(), lon: z.number(),
       radius_km: z.number().default(50).describe('Search radius in km (keep <= 100)'),
@@ -163,11 +136,9 @@ export class SeismicTools {
   @Tool({
     name: 'replay_event',
     description:
-      'SIMULATION MODE: run the full Atlas exposure pipeline against a historical earthquake, clearly labeled as a replay. ' +
-      'WHEN TO USE: capability demonstrations or past events — "show me how Atlas would respond to the 2023 Türkiye earthquake". ' +
-      'Known ids: "us6000jllz" = 2023 Türkiye M7.8. Any USGS event id works. ' +
-      'NEXT STEP: the returned event.id can be passed to generate_sitrep for a formal report, or to check_asset_exposure. ' +
-      'WHEN NOT TO USE: current/recent earthquakes (use latest_events).',
+      'SIMULATION MODE: run the full Atlas exposure pipeline against a famous historical earthquake, clearly labeled as a replay. ' +
+      'Use for capability demonstrations ("show me how Atlas would respond to the 2023 Türkiye earthquake"). ' +
+      'Known ids: "us6000jllz" = 2023 Türkiye M7.8. Any USGS event id works.',
     inputSchema: z.object({
       event_id: z.string().default('us6000jllz').describe('Historical USGS event id'),
     }),
@@ -175,7 +146,13 @@ export class SeismicTools {
   async replayEvent(input: { event_id: string }, ctx: ExecutionContext) {
     try {
       const url = `https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&eventid=${encodeURIComponent(input.event_id)}`;
-      const q = parseUsgs(await fetchJson(url, { ttlMs: 3600_000 }))[0];
+      let q = await fetchJson(url, { ttlMs: 3600_000 }).then((d) => parseUsgs(d)[0]).catch(() => undefined as Quake | undefined);
+      if (!q && input.event_id === 'us6000jllz') {
+        q = { id: 'us6000jllz', mag: 7.8, place: 'Pazarcik earthquake, Kahramanmaras, Türkiye',
+          time_utc: '2023-02-06T01:17:00Z', hours_ago: Math.round((Date.now() - 1675646220000) / 3600_000),
+          lat: 37.166, lon: 37.032, depth_km: 10,
+          url: 'https://earthquake.usgs.gov/earthquakes/eventpage/us6000jllz' }; // offline fallback
+      }
       if (!q) return { error: `No historical event '${input.event_id}' found at USGS.`, hint: 'Try "us6000jllz" (Türkiye 2023 M7.8).' };
       ctx.logger.info('Replaying historical event', { id: q.id, mag: q.mag });
       return {

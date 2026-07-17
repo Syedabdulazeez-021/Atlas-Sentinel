@@ -1,0 +1,8 @@
+{
+  "alert_threshold": "low",
+  "monitoring_active": true,
+  "monitoring_interval": 5,
+  "alerts_paused": false,
+  "budget_day": "2026-07-17",
+  "budget_used": 3
+}

@@ -1,0 +1,22 @@
+[
+  {
+    "role": "owner",
+    "asset_name": "Kochi Assembly Plant",
+    "name": "Owner (Kochi)",
+    "email": "technicalreview04@gmail.com",
+    "telegram_chat_id": "5253531067"
+  },
+  {
+    "name": "Owner (Hsinchu)",
+    "role": "owner",
+    "asset_name": "Hsinchu Chip Supplier",
+    "telegram_chat_id": "5253531067"
+  },
+  {
+    "name": "Azeez (Gaziantep)",
+    "role": "owner",
+    "asset_name": "Gaziantep Textile Supplier",
+    "telegram_chat_id": "5253531067",
+    "email": "am.sc.u4aie24049@am.students.amrita.edu"
+  }
+]

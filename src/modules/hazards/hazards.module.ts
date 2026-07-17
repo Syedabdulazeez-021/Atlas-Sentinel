@@ -27,13 +27,9 @@ export class HazardTools {
   @Tool({
     name: 'forecast_at',
     description:
-      'Get a 3-day severe-weather outlook for ONE monitored asset (heat, extreme rainfall/flood risk, damaging wind gusts). ' +
-      'WHEN TO USE: the user asks about weather risk, storms, typhoons, heatwaves or flooding at a specific site — ' +
-      'e.g. "weather risk at Kochi Assembly Plant?". If the user already supplied the asset name, call this tool DIRECTLY with that ' +
-      'name — do NOT call list_assets first. Matching is case-insensitive, and an unknown name returns known_assets so you can recover in one step. ' +
-      'Only consult list_assets first when the asset name is missing or ambiguous. ' +
-      'WHEN NOT TO USE: weather across ALL assets at once (use threat_sweep); earthquake exposure (check_asset_exposure).',
-    inputSchema: z.object({ asset_name: z.string().describe('Asset name as the user provided it (matched case-insensitively against registered assets)') }),
+      'Get a 3-day severe-weather outlook for one monitored asset (heat, extreme rainfall/flood risk, damaging wind gusts). ' +
+      'Use when the user asks about weather risk to a site, storms, typhoons, heatwaves or flooding. Pass the exact asset name from list_assets.',
+    inputSchema: z.object({ asset_name: z.string().describe('Exact name of a registered asset') }),
   })
   async forecastAt(input: { asset_name: string }, ctx: ExecutionContext) {
     const asset = store.getAsset(input.asset_name);
@@ -58,9 +54,7 @@ export class HazardTools {
     name: 'space_weather',
     description:
       'Current geomagnetic storm conditions from NOAA (planetary K-index). Solar storms disrupt GPS, satellite links and power grids — ' +
-      'relevant to logistics, datacenters and grid-dependent factories. ' +
-      'WHEN TO USE: the user asks specifically about solar activity, geomagnetic storms, or GPS/satellite reliability. ' +
-      'WHEN NOT TO USE: general risk overviews or briefings — threat_sweep already includes this channel, so do not call both.',
+      'relevant to logistics, datacenters and grid-dependent factories. Use when the user asks about solar activity, GPS reliability, or as part of a full threat sweep.',
     inputSchema: z.object({}),
   })
   async spaceWeather(_input: unknown, ctx: ExecutionContext) {
@@ -82,12 +76,7 @@ export class HazardTools {
     name: 'news_shocks',
     description:
       'Scan global news (GDELT, updated every 15 min) for supply-chain disruption signals: strikes, port closures, accidents, unrest. ' +
-      'WHEN TO USE: (1) as the standard SECOND step after threat_sweep in every morning briefing, "current threats", operations or ' +
-      'supply-chain overview — the sweep covers physical channels only, this adds the news channel; ' +
-      '(2) whenever the user asks about news, disruptions, strikes or port closures directly. ' +
-      'Use a focused query like "port strike Taiwan" or "factory fire semiconductor" — build it from the monitored asset regions. ' +
-      'Treat results as SIGNALS to investigate, not confirmed facts, and say so. ' +
-      'WHEN NOT TO USE: physical hazards (earthquakes → latest_events, weather → forecast_at, solar → space_weather).',
+      'Use with a focused query like "port strike Taiwan" or "factory fire semiconductor". Treat results as SIGNALS to investigate, not confirmed facts, and say so.',
     inputSchema: z.object({
       query: z.string().describe('Focused search, e.g. "port strike", "factory fire", a region or supplier name'),
       max_results: z.number().default(5),

@@ -3,6 +3,7 @@ import { AssetsModule } from './modules/assets/assets.module.js';
 import { SeismicModule } from './modules/seismic/seismic.module.js';
 import { HazardsModule } from './modules/hazards/hazards.module.js';
 import { OpsModule } from './modules/ops/ops.module.js';
+import { AlertsModule } from './modules/alerts/alerts.module.js';
 import { SystemHealthCheck } from './health/system.health.js';
 
 /**
@@ -18,7 +19,7 @@ import { SystemHealthCheck } from './health/system.health.js';
 @Module({
   name: 'app',
   description: 'Atlas Sentinel — real-time threat monitoring for factories and supply chains',
-  imports: [ConfigModule.forRoot(), AssetsModule, SeismicModule, HazardsModule, OpsModule],
+  imports: [ConfigModule.forRoot(), AssetsModule, SeismicModule, HazardsModule, OpsModule, AlertsModule],
   providers: [SystemHealthCheck]
 })
 export class AppModule {}

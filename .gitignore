@@ -12,9 +12,6 @@ out/
 # Generated
 next-env.d.ts
 
-# Runtime state (persisted asset registry; seed lives in assets.seed.json)
-data/assets.json
-
 # Environment
 .env
 .env.local

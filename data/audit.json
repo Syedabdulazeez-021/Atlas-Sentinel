@@ -1,0 +1,68 @@
+[
+  {
+    "ts": "2026-07-17T17:10:20.203Z",
+    "tool": "threat_sweep",
+    "summary": "1 signals",
+    "outcome": "ok"
+  },
+  {
+    "ts": "2026-07-17T17:12:19.338Z",
+    "tool": "alert_controls",
+    "summary": "kill switch",
+    "outcome": "paused"
+  },
+  {
+    "ts": "2026-07-17T17:16:12.889Z",
+    "tool": "send_alert",
+    "summary": "preview to 1 contact(s)",
+    "outcome": "awaiting confirmation"
+  },
+  {
+    "ts": "2026-07-17T17:16:23.848Z",
+    "tool": "send_alert",
+    "summary": "Owner (Kochi)",
+    "outcome": "blocked: Alerts are paused (kill switch). Use resume_alerts to re-enable."
+  },
+  {
+    "ts": "2026-07-17T17:17:08.352Z",
+    "tool": "alert_controls",
+    "summary": "kill switch",
+    "outcome": "resumed"
+  },
+  {
+    "ts": "2026-07-17T17:17:20.485Z",
+    "tool": "send_alert",
+    "summary": "Owner (Kochi)",
+    "outcome": "sent"
+  },
+  {
+    "ts": "2026-07-17T17:18:44.079Z",
+    "tool": "send_alert",
+    "summary": "Owner (Kochi)",
+    "outcome": "sent"
+  },
+  {
+    "ts": "2026-07-17T17:19:33.684Z",
+    "tool": "send_alert",
+    "summary": "Owner (Kochi)",
+    "outcome": "sent"
+  },
+  {
+    "ts": "2026-07-17T17:23:52.559Z",
+    "tool": "generate_sitrep",
+    "summary": "us7000t1bu",
+    "outcome": "ok"
+  },
+  {
+    "ts": "2026-07-17T18:27:06.574Z",
+    "tool": "generate_sitrep",
+    "summary": "us7000t1bu",
+    "outcome": "ok"
+  },
+  {
+    "ts": "2026-07-17T18:53:45.514Z",
+    "tool": "generate_sitrep",
+    "summary": "us7000t1bu",
+    "outcome": "ok"
+  }
+]

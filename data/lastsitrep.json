@@ -1,0 +1,56 @@
+{
+  "report_type": "ATLAS SENTINEL SITUATION REPORT",
+  "mode": "LIVE",
+  "generated_at_utc": "2026-07-17T18:53:45.511Z",
+  "situation": {
+    "event": {
+      "id": "us7000t1bu",
+      "mag": 7.3,
+      "place": "58 km WSW of Puerto Madero, Mexico",
+      "time_utc": "2026-07-17T14:48:39.769Z",
+      "hours_ago": 4.1,
+      "lat": 14.6043,
+      "lon": -92.9517,
+      "depth_km": 18.584,
+      "url": "https://earthquake.usgs.gov/earthquakes/eventpage/us7000t1bu"
+    },
+    "summary": "M7.3 earthquake, 58 km WSW of Puerto Madero, Mexico, depth 18.584 km"
+  },
+  "asset_impact": [
+    {
+      "asset": "Gaziantep Textile Supplier",
+      "type": "supplier",
+      "distance_km": 12270,
+      "severity": "none"
+    },
+    {
+      "asset": "Osaka Distribution Warehouse",
+      "type": "warehouse",
+      "distance_km": 12520,
+      "severity": "none"
+    },
+    {
+      "asset": "Hsinchu Chip Supplier",
+      "type": "supplier",
+      "distance_km": 14293,
+      "severity": "none"
+    },
+    {
+      "asset": "Kaohsiung Port site",
+      "type": "port",
+      "distance_km": 14517,
+      "severity": "none"
+    },
+    {
+      "asset": "Kochi Assembly Plant",
+      "type": "factory",
+      "distance_km": 17039,
+      "severity": "none"
+    }
+  ],
+  "affected_count": 0,
+  "recommended_actions": [
+    "No monitored assets exposed. Log event and continue monitoring."
+  ],
+  "next_review": "Re-run threat_sweep in 4 hours or upon aftershock M5.0+"
+}

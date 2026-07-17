@@ -1,0 +1,38 @@
+{
+  "at": "2026-07-17T17:10:20.199Z",
+  "result": {
+    "mode": "LIVE — real-time data",
+    "generated_at_utc": "2026-07-17T17:10:20.199Z",
+    "assets_monitored": [
+      "Hsinchu Chip Supplier",
+      "Osaka Distribution Warehouse",
+      "Kochi Assembly Plant"
+    ],
+    "signal_count": 1,
+    "signals": [
+      {
+        "channel": "seismic",
+        "severity": "low",
+        "asset": "Osaka Distribution Warehouse",
+        "headline": "M5.2 earthquake 48 km E of Nishinoomote, Japan — 574 km from Osaka Distribution Warehouse (19.3h ago)",
+        "detail": {
+          "event_id": "us7000t15t",
+          "mag": 5.2,
+          "distance_km": 574,
+          "time_utc": "2026-07-16T21:49:42.977Z"
+        }
+      }
+    ],
+    "channels": {
+      "space": "NOAA Kp=0 (quiet)",
+      "seismic": "USGS: 30 events (M4.5+, 48h)",
+      "weather": "Open-Meteo: 3 sites checked",
+      "news": "GDELT: regions Taiwan, Japan, India"
+    },
+    "channel_errors": [
+      "news@Japan: fetch failed",
+      "news@India: fetch failed",
+      "news@Taiwan: fetch failed"
+    ]
+  }
+}

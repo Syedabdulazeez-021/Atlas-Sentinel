@@ -13,6 +13,11 @@ import 'dotenv/config';
 import { McpApplicationFactory } from '@nitrostack/core';
 import { AppModule } from './app.module.js';
 
+// Crash shield: a tool bug or stray rejection must NEVER kill the MCP server.
+process.on('uncaughtException', (err) => { console.error('[atlas] uncaughtException (survived):', err); });
+process.on('unhandledRejection', (err) => { console.error('[atlas] unhandledRejection (survived):', err); });
+
+
 /**
  * Bootstrap the application
  */

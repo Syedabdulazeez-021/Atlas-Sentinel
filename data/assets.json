@@ -1,0 +1,37 @@
+[
+  {
+    "lat": 24.8138,
+    "lon": 120.9675,
+    "name": "Hsinchu Chip Supplier",
+    "notes": "Makes advanced packaging substrates for chip supply chain",
+    "type": "supplier"
+  },
+  {
+    "name": "Osaka Distribution Warehouse",
+    "lat": 34.69,
+    "lon": 135.5,
+    "type": "warehouse",
+    "notes": "Primary Japan distribution hub"
+  },
+  {
+    "name": "Kochi Assembly Plant",
+    "lat": 9.93,
+    "lon": 76.26,
+    "type": "factory",
+    "notes": "Final assembly, Kerala, India"
+  },
+  {
+    "name": "Gaziantep Textile Supplier",
+    "lat": 37.07,
+    "lon": 37.38,
+    "type": "supplier",
+    "notes": "Textile supplier, Gaziantep, Turkey"
+  },
+  {
+    "lat": 22.6163,
+    "lon": 120.2855,
+    "name": "Kaohsiung Port site",
+    "notes": "Port site in Kaohsiung, Taiwan; coordinates estimated at Port of Kaohsiung",
+    "type": "port"
+  }
+]

@@ -1,4 +1,6 @@
-# Atlas Sentinel 🌍🛰️
+# Atlas Sentinel 🌍🛰️ (v2 — crash-proof build)
+
+> v2 changes: signals-not-verdicts sweep architecture (AI does cross-channel correlation), resources as the state layer, 3 workflow prompts, full alerting suite (Telegram + confirmation guardrails + watchman + budget/kill-switch + audit), **pure-JSON persistence (zero native modules — immune to the NitroStudio runtime-mismatch crash)**, and process-level crash shields.
 
 **Real-time threat monitoring for factories and supply chains — as an MCP server any AI assistant can use.**
 
