@@ -18,8 +18,12 @@ function meetsThreshold(sev: Severity, threshold: Level): boolean {
 /** Send one Telegram message. Never throws. */
 async function telegramSend(chatId: string, text: string):
   Promise<{ sent: boolean; error?: string }> {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
-  if (!token) return { sent: false, error: 'Set TELEGRAM_BOT_TOKEN in .env. Get one from @BotFather on Telegram.' };
+  // .trim() defends against invisible whitespace — a trailing CR from a CRLF
+  // .env line, or a stray newline/space when the token is pasted into a hosting
+  // provider's env-var UI (NitroStack/NitroStudio). Such characters silently
+  // corrupt the /bot<token>/ URL and surface as a bogus "bot token" error.
+  const token = process.env.TELEGRAM_BOT_TOKEN?.trim();
+  if (!token) return { sent: false, error: 'Set TELEGRAM_BOT_TOKEN in .env (or your host\'s env vars). Get one from @BotFather on Telegram.' };
   if (alertsPaused()) return { sent: false, error: 'Alerts are paused (kill switch). Use resume_alerts to re-enable.' };
   const budget = budgetOk();
   if (!budget.ok) return { sent: false, error: 'Daily alert budget exhausted. Use set_alert_budget or wait until UTC midnight.' };
