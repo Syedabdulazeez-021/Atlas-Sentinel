@@ -9,7 +9,28 @@
  * - Production (NODE_ENV=production): Dual transport (STDIO + HTTP SSE)
  */
 
-import 'dotenv/config';
+// Load .env from an absolute path anchored to this module, NOT process.cwd().
+// MCP clients launch the server from their own working directory, so the plain
+// `import 'dotenv/config'` (which resolves .env against cwd) silently finds
+// nothing and every tool that needs TELEGRAM_BOT_TOKEN fails with a bogus
+// "Set TELEGRAM_BOT_TOKEN in .env" error even though .env exists.
+import { config as loadEnv } from 'dotenv';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
+import { existsSync } from 'node:fs';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+// This file lives one level under the project root in both src/ and dist/.
+for (const candidate of [
+  resolve(__dirname, '..', '.env'),
+  resolve(process.cwd(), '.env'),
+]) {
+  if (existsSync(candidate)) {
+    loadEnv({ path: candidate });
+    break;
+  }
+}
+
 import { McpApplicationFactory } from '@nitrostack/core';
 import { AppModule } from './app.module.js';
 
