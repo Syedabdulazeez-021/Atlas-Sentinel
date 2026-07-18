@@ -1,14 +1,14 @@
 {
   "report_type": "ATLAS SENTINEL SITUATION REPORT",
   "mode": "LIVE",
-  "generated_at_utc": "2026-07-17T18:53:45.511Z",
+  "generated_at_utc": "2026-07-17T21:04:01.172Z",
   "situation": {
     "event": {
       "id": "us7000t1bu",
       "mag": 7.3,
       "place": "58 km WSW of Puerto Madero, Mexico",
       "time_utc": "2026-07-17T14:48:39.769Z",
-      "hours_ago": 4.1,
+      "hours_ago": 6.3,
       "lat": 14.6043,
       "lon": -92.9517,
       "depth_km": 18.584,
