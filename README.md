@@ -28,9 +28,15 @@ Enterprises pay critical-event-management vendors millions to learn, fast, when 
 ```
 
 ## MCP surface
-**12 Tools** — register_asset, list_assets, remove_asset, latest_events, check_asset_exposure, find_critical_infra, replay_event, forecast_at, space_weather, news_shocks, threat_sweep ⭐, generate_sitrep
-**2 Resources** — atlas://assets · atlas://threats/live
-**2 Prompts** — morning_risk_brief · emergency_sitrep
+**18 Tools**
+- Assets: register_asset, list_assets, remove_item
+- Seismic: latest_events, check_asset_exposure, find_critical_infra, replay_event
+- Hazards: forecast_at, space_weather, news_shocks
+- Ops: threat_sweep ⭐, generate_sitrep
+- Alerts: register_contact, list_contacts, send_alert, auto_alert_sweep, monitoring, alert_controls
+
+**5 Resources** — atlas://assets · atlas://contacts · atlas://audit · atlas://threats/live · atlas://sitrep/latest
+**4 Prompts** — morning_risk_brief · emergency_sitrep · incident_commander · alert_sweep_notify
 
 ## Quickstart
 ```bash
@@ -56,7 +62,7 @@ Never crashes ({error, hint} payloads, 12s timeouts) · errors teach (unknown id
 
 ## External components (declared per R12)
 USGS FDSN Event API · Open-Meteo · NOAA SWPC · GDELT DOC API · OpenStreetMap/Overpass — all keyless, free. NitroStack SDK/CLI, zod, dotenv, tsx.
-AI coding assistants (Claude) used for implementation assistance per R22; problem definition, architecture and creative direction by Team Atlas.
+AI coding assistants (Claude) used for implementation assistance per R22; problem definition, architecture and creative direction by Syed Abdul Azeez.
 
 ## Roadmap
 NASA FIRMS wildfire channel · webhook alerts · per-asset thresholds · AIS maritime channel · multi-tenant registries.
